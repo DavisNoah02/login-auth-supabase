@@ -1,9 +1,9 @@
-
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { Eye, EyeOff, Mail, Lock, Apple, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { auth, googleProvider } from "@/lib/firebase";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -22,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -31,22 +33,56 @@ export default function Login() {
     },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    console.log("Login data:", data);
-    
-    // Simulate login success
-    toast({
-      title: "Login successful",
-      description: `Welcome back, ${data.email}!`,
-    });
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      console.log("Login data:", data);
+      
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.email}!`,
+      });
+      
+      // Redirect to dashboard or home page after successful login
+      // navigate("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Google login clicked");
-    toast({
-      title: "Google login",
-      description: "Connecting to Google...",
-    });
+  const handleGoogleLogin = async () => {
+    try {
+      console.log("Google login clicked");
+      toast({
+        title: "Google login",
+        description: "Connecting to Google...",
+      });
+      
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome, ${user.displayName || user.email}!`,
+      });
+      
+      // Redirect to dashboard or home page after successful login
+      // navigate("/dashboard");
+    } catch (error) {
+      console.error("Google login error:", error);
+      toast({
+        title: "Google login failed",
+        description: "Could not sign in with Google. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAppleLogin = () => {
