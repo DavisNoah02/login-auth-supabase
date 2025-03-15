@@ -1,9 +1,10 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Eye, EyeOff, Mail, Lock, User, Apple, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { auth, googleProvider } from "@/lib/firebase";
+import { signInWithPopup } from "firebase/auth";
 
 const registerSchema = z
   .object({
@@ -34,6 +37,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -46,22 +50,80 @@ export default function Register() {
     },
   });
 
-  const onSubmit = (data: RegisterFormValues) => {
-    console.log("Register data:", data);
-    
-    // Simulate registration success
-    toast({
-      title: "Registration successful",
-      description: `Welcome, ${data.name}! Your account has been created.`,
-    });
+  const onSubmit = async (data: RegisterFormValues) => {
+    try {
+      console.log("Register data:", data);
+      
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        data.email, 
+        data.password
+      );
+      
+      // Update the user profile with the name
+      await updateProfile(userCredential.user, {
+        displayName: data.name
+      });
+      
+      toast({
+        title: "Registration successful",
+        description: `Welcome, ${data.name}! Your account has been created.`,
+      });
+      
+      // Navigate to login page after successful registration
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      
+      let errorMessage = "Registration failed. Please try again.";
+      
+      // Handle specific Firebase errors
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already registered. Please use a different email or try logging in.";
+      }
+      
+      toast({
+        title: "Registration failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleGoogleSignup = () => {
-    console.log("Google signup clicked");
-    toast({
-      title: "Google signup",
-      description: "Connecting to Google...",
-    });
+  const handleGoogleSignup = async () => {
+    try {
+      console.log("Google signup clicked");
+      toast({
+        title: "Google signup",
+        description: "Connecting to Google...",
+      });
+      
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      toast({
+        title: "Registration successful",
+        description: `Welcome, ${user.displayName || user.email}! Your account has been created.`,
+      });
+      
+      // Navigate to the desired page after successful registration
+      setTimeout(() => {
+        // navigate('/dashboard');
+        navigate('/login');
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Google signup error:", error);
+      toast({
+        title: "Google signup failed",
+        description: "Could not sign up with Google. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAppleSignup = () => {
