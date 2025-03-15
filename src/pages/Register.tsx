@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { Eye, EyeOff, Mail, Lock, User, Apple, ArrowRight } from "lucide-react";
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth";
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { auth, googleProvider } from "@/lib/firebase";
-import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider, microsoftProvider } from "@/lib/firebase";
 
 const registerSchema = z
   .object({
@@ -54,14 +52,12 @@ export default function Register() {
     try {
       console.log("Register data:", data);
       
-      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(
         auth, 
         data.email, 
         data.password
       );
       
-      // Update the user profile with the name
       await updateProfile(userCredential.user, {
         displayName: data.name
       });
@@ -71,7 +67,6 @@ export default function Register() {
         description: `Welcome, ${data.name}! Your account has been created.`,
       });
       
-      // Navigate to login page after successful registration
       setTimeout(() => {
         navigate('/login');
       }, 2000);
@@ -81,7 +76,6 @@ export default function Register() {
       
       let errorMessage = "Registration failed. Please try again.";
       
-      // Handle specific Firebase errors
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "This email is already registered. Please use a different email or try logging in.";
       }
@@ -110,9 +104,7 @@ export default function Register() {
         description: `Welcome, ${user.displayName || user.email}! Your account has been created.`,
       });
       
-      // Navigate to the desired page after successful registration
       setTimeout(() => {
-        // navigate('/dashboard');
         navigate('/login');
       }, 2000);
       
@@ -126,12 +118,34 @@ export default function Register() {
     }
   };
 
-  const handleAppleSignup = () => {
-    console.log("Apple signup clicked");
-    toast({
-      title: "Apple signup",
-      description: "Connecting to Apple...",
-    });
+  const handleMicrosoftSignup = async () => {
+    try {
+      console.log("Microsoft signup clicked");
+      toast({
+        title: "Microsoft signup",
+        description: "Connecting to Microsoft...",
+      });
+      
+      const result = await signInWithPopup(auth, microsoftProvider);
+      const user = result.user;
+      
+      toast({
+        title: "Registration successful",
+        description: `Welcome, ${user.displayName || user.email}! Your account has been created.`,
+      });
+      
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Microsoft signup error:", error);
+      toast({
+        title: "Microsoft signup failed",
+        description: "Could not sign up with Microsoft. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -312,9 +326,15 @@ export default function Register() {
               </svg>
               Google
             </Button>
-            <Button variant="outline" onClick={handleAppleSignup} className="flex items-center justify-center gap-2">
-              <Apple className="h-5 w-5" />
-              Apple
+            <Button variant="outline" onClick={handleMicrosoftSignup} className="flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" width="20" height="20">
+                <path fill="#f3f3f3" d="M0 0h23v23H0z" />
+                <path fill="#f35325" d="M1 1h10v10H1z" />
+                <path fill="#81bc06" d="M12 1h10v10H12z" />
+                <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                <path fill="#ffba08" d="M12 12h10v10H12z" />
+              </svg>
+              Microsoft
             </Button>
           </div>
         </CardContent>

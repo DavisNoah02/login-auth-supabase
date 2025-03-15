@@ -4,14 +4,14 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { Eye, EyeOff, Mail, Lock, Apple, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { auth, googleProvider } from "@/lib/firebase";
+import { auth, googleProvider, microsoftProvider } from "@/lib/firebase";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -85,12 +85,32 @@ export default function Login() {
     }
   };
 
-  const handleAppleLogin = () => {
-    console.log("Apple login clicked");
-    toast({
-      title: "Apple login",
-      description: "Connecting to Apple...",
-    });
+  const handleMicrosoftLogin = async () => {
+    try {
+      console.log("Microsoft login clicked");
+      toast({
+        title: "Microsoft login",
+        description: "Connecting to Microsoft...",
+      });
+      
+      const result = await signInWithPopup(auth, microsoftProvider);
+      const user = result.user;
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome, ${user.displayName || user.email}!`,
+      });
+      
+      // Redirect to dashboard or home page after successful login
+      // navigate("/dashboard");
+    } catch (error) {
+      console.error("Microsoft login error:", error);
+      toast({
+        title: "Microsoft login failed",
+        description: "Could not sign in with Microsoft. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -188,9 +208,15 @@ export default function Login() {
               </svg>
               Google
             </Button>
-            <Button variant="outline" onClick={handleAppleLogin} className="flex items-center justify-center gap-2">
-              <Apple className="h-5 w-5" />
-              Apple
+            <Button variant="outline" onClick={handleMicrosoftLogin} className="flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" width="20" height="20">
+                <path fill="#f3f3f3" d="M0 0h23v23H0z" />
+                <path fill="#f35325" d="M1 1h10v10H1z" />
+                <path fill="#81bc06" d="M12 1h10v10H12z" />
+                <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                <path fill="#ffba08" d="M12 12h10v10H12z" />
+              </svg>
+              Microsoft
             </Button>
           </div>
         </CardContent>
