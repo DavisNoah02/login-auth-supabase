@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { auth, googleProvider, microsoftProvider } from "@/lib/firebase";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -22,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -35,6 +37,7 @@ export default function Login() {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
+      setAuthError(null);
       console.log("Login data:", data);
       
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
@@ -47,11 +50,23 @@ export default function Login() {
       
       // Redirect to dashboard or home page after successful login
       // navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      
+      let errorMessage = "Invalid email or password. Please try again.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = "Invalid email or password. Please try again.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many unsuccessful login attempts. Please try again later.";
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = "This account has been disabled. Please contact support.";
+      }
+      
+      setAuthError(errorMessage);
+      
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -59,6 +74,7 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     try {
+      setAuthError(null);
       console.log("Google login clicked");
       toast({
         title: "Google login",
@@ -75,11 +91,26 @@ export default function Login() {
       
       // Redirect to dashboard or home page after successful login
       // navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google login error:", error);
+      
+      let errorMessage = "Could not sign in with Google. Please try again.";
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = "This domain is not authorized for authentication. Try using email/password or contact support.";
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Login popup was closed. Please try again.";
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        errorMessage = "Another authentication popup is already open.";
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = "The login popup was blocked by your browser. Please allow popups for this site.";
+      }
+      
+      setAuthError(errorMessage);
+      
       toast({
         title: "Google login failed",
-        description: "Could not sign in with Google. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -121,6 +152,13 @@ export default function Login() {
           <CardDescription className="text-center">Enter your credentials to sign in to your account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {authError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Authentication Error</AlertTitle>
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
