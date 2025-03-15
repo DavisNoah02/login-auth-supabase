@@ -24,8 +24,11 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showDomainHelper, setShowDomainHelper] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  const currentDomain = window.location.hostname;
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -48,8 +51,7 @@ export default function Login() {
         description: `Welcome back, ${user.email}!`,
       });
       
-      // Redirect to dashboard or home page after successful login
-      // navigate("/dashboard");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
       
@@ -75,6 +77,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       setAuthError(null);
+      setShowDomainHelper(false);
       console.log("Google login clicked");
       toast({
         title: "Google login",
@@ -89,15 +92,15 @@ export default function Login() {
         description: `Welcome, ${user.displayName || user.email}!`,
       });
       
-      // Redirect to dashboard or home page after successful login
-      // navigate("/dashboard");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Google login error:", error);
       
       let errorMessage = "Could not sign in with Google. Please try again.";
       
       if (error.code === 'auth/unauthorized-domain') {
-        errorMessage = "This domain is not authorized for authentication. Try using email/password or contact support.";
+        errorMessage = `This domain (${currentDomain}) is not authorized for Firebase authentication.`;
+        setShowDomainHelper(true);
       } else if (error.code === 'auth/popup-closed-by-user') {
         errorMessage = "Login popup was closed. Please try again.";
       } else if (error.code === 'auth/cancelled-popup-request') {
@@ -118,6 +121,8 @@ export default function Login() {
 
   const handleMicrosoftLogin = async () => {
     try {
+      setAuthError(null);
+      setShowDomainHelper(false);
       console.log("Microsoft login clicked");
       toast({
         title: "Microsoft login",
@@ -132,13 +137,24 @@ export default function Login() {
         description: `Welcome, ${user.displayName || user.email}!`,
       });
       
-      // Redirect to dashboard or home page after successful login
-      // navigate("/dashboard");
-    } catch (error) {
+      navigate("/dashboard");
+    } catch (error: any) {
       console.error("Microsoft login error:", error);
+      
+      let errorMessage = "Could not sign in with Microsoft. Please try again.";
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = `This domain (${currentDomain}) is not authorized for Firebase authentication.`;
+        setShowDomainHelper(true);
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Login popup was closed. Please try again.";
+      }
+      
+      setAuthError(errorMessage);
+      
       toast({
         title: "Microsoft login failed",
-        description: "Could not sign in with Microsoft. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -156,6 +172,21 @@ export default function Login() {
             <Alert variant="destructive" className="mb-4">
               <AlertTitle>Authentication Error</AlertTitle>
               <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          )}
+          
+          {showDomainHelper && (
+            <Alert className="mb-4">
+              <AlertTitle>Firebase Domain Authorization Required</AlertTitle>
+              <AlertDescription>
+                <p className="mb-2">You need to add <strong>{currentDomain}</strong> to your Firebase authorized domains list:</p>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Firebase Console</a></li>
+                  <li>Select your project</li>
+                  <li>Go to Authentication → Settings → Authorized domains</li>
+                  <li>Add {currentDomain} to the list</li>
+                </ol>
+              </AlertDescription>
             </Alert>
           )}
           
